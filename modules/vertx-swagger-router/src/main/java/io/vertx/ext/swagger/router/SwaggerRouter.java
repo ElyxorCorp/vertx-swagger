@@ -10,12 +10,14 @@ import java.util.regex.Pattern;
 import io.swagger.models.HttpMethod;
 import io.swagger.models.Operation;
 import io.swagger.models.Swagger;
+import io.vertx.core.eventbus.DeliveryOptions;
 import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.eventbus.Message;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.auth.User;
 import io.vertx.ext.swagger.router.extractors.BodyParameterExtractor;
 import io.vertx.ext.swagger.router.extractors.FormParameterExtractor;
 import io.vertx.ext.swagger.router.extractors.HeaderParameterExtractor;
@@ -25,6 +27,7 @@ import io.vertx.ext.swagger.router.extractors.QueryParameterExtractor;
 import io.vertx.ext.swagger.router.headers.EventBusHeaders;
 import io.vertx.ext.web.Route;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 
 public class SwaggerRouter {
@@ -77,7 +80,11 @@ public class SwaggerRouter {
                     Object value = PARAMETER_EXTRACTORS.get(parameter.getIn()).extract(name, parameter, context);
                     message.put(name, value);
                 });
-                eventBus.<String> send(serviceId, message, operationResponse -> {
+
+                DeliveryOptions options = new DeliveryOptions();
+                addUserIdentity(options, context);
+
+                eventBus.<String> send(serviceId, message, options, operationResponse -> {
                     if (operationResponse.succeeded()) {
                         if(operationResponse.result().body() != null) {
                             if ( ((Message) operationResponse.result()).headers().contains(EventBusHeaders.HTTP_STATUS_CODE) ) {
@@ -99,6 +106,20 @@ public class SwaggerRouter {
             
         });
 
+    }
+
+    private static void addUserIdentity(DeliveryOptions options, RoutingContext context) {
+        if (options == null) {
+            throw new IllegalArgumentException("DeliveryOptions cannot be null");
+        }
+        if (context == null) {
+            throw new IllegalArgumentException("RoutingContext cannot be null");
+        }
+        if (context.user() != null) {
+            UserIdentity user = (UserIdentity) context.user();
+            options.addHeader("userName", user.getName());
+            options.addHeader("userToken", user.getToken());
+        }
     }
 
     private static String convertParametersToVertx(String path) {
