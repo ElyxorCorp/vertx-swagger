@@ -116,9 +116,9 @@ public class SwaggerRouter {
             throw new IllegalArgumentException("RoutingContext cannot be null");
         }
         if (context.user() != null) {
-            UserIdentity user = (UserIdentity) context.user();
-            options.addHeader("userName", user.getName());
-            options.addHeader("userToken", user.getToken());
+            User user = context.user();
+            options.addHeader("userName", user.principal().getString("name"));
+            options.addHeader("userToken", user.principal().getString("token"));
         }
     }
 
