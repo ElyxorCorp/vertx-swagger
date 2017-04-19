@@ -58,7 +58,8 @@ public class SwaggerRouter {
     };
 
     public static Router swaggerRouter(Router baseRouter, Swagger swagger, EventBus eventBus) {
-        baseRouter.route().handler(BodyHandler.create());
+        // BaseRouter was causing problems when not set up as the first route. We now add a BodyHandler to our HttpModule
+        //baseRouter.route().handler(BodyHandler.create());
         swagger.getPaths().forEach((path, pathDescription) -> pathDescription.getOperationMap().forEach((method, operation) -> {
             Route route = ROUTE_BUILDERS.get(method).buildRoute(baseRouter, convertParametersToVertx(path));
             String serviceId = computeServiceId(method, path);
